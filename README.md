@@ -4,7 +4,7 @@ Prototype Python d'une chaîne de traitement pour la **spécification d'essais v
 
 Projet personnel d'apprentissage, validé sur des **cas analytiques et des signaux synthétiques**. Ce n'est pas un outil industriel : voir la section [Hypothèses et limites](#hypothèses-et-limites).
 
-Auteur : Tristan, élève-ingénieur ESILV (Modélisation et Mécanique Numérique).
+Auteur : Tristan, élève-ingénieur ESILV (Modélisation Mécanique et Numérique).
 
 ## Chaîne de traitement
 
