@@ -22,7 +22,7 @@ Test de validité (valeurs propres ≥ 0)           validity.py       (étape 4)
 Génération de signaux triaxiaux depuis S(f)      generation.py     (étape 5)
             │
             ▼
-Dommage de fatigue (FDS)                         damage.py         (étape 6, à venir)
+Dommage de fatigue (FDS) mono-direction         damage.py         (étape 6)
 ```
 
 ## Statut
@@ -34,7 +34,7 @@ Dommage de fatigue (FDS)                         damage.py         (étape 6, à
 | 3 | Matrice interspectrale 3×3, cohérence, phase | Fait, testé |
 | 4 | Validité de la matrice, enveloppe invalide, correction | Fait, testé |
 | 5 | Génération de signaux triaxiaux, validation en boucle fermée | Fait, testé |
-| 6 | Dommage de fatigue (FDS) | Non fait |
+| 6 | Dommage de fatigue (FDS) mono-direction, additivité pour b = 2 | Fait, testé |
 | 7-8 | Surface de dommage, essai séquentiel contre simultané | Non faits |
 
 ## Installation
@@ -45,7 +45,7 @@ Testé sous Python 3.14. Dépendances : NumPy, SciPy, Matplotlib, pytest.
 python -m venv .venv
 source .venv/bin/activate        # Windows : .venv\Scripts\activate
 pip install -r requirements.txt
-pytest                           # 31 tests
+pytest                           # 46 tests
 ```
 
 ## Utilisation
@@ -58,6 +58,7 @@ python src/demo_step2.py   # oscillateur 1 DDL et équation de Miles
 python src/demo_step3.py   # matrice 3x3, cohérence et phase
 python src/demo_step4.py   # enveloppe non physique et correction
 python src/demo_step5.py   # génération triaxiale et ré-estimation
+python src/demo_step6.py   # FDS de deux spécifications de même RMS, additivité
 ```
 
 Exemple minimal (génération puis ré-estimation), à lancer depuis le dossier `src/` :
@@ -108,6 +109,12 @@ Chaque module est comparé à un résultat analytique. Les tolérances ne sont p
 | 5 | Couplage purement imaginaire | +90,00° | ± 1° |
 | 5 | Kurtosis (signal gaussien) | 2,995 | 3 ± 0,05 |
 | 5 | Matrice singulière (y = x) acceptée | signaux identiques | 1e-9 |
+| 6 | z_rms (déplacement relatif) contre la formule exacte du bruit blanc | écart < 0,01 % (fn = 50, 200, 400 Hz) | 1e-3 |
+| 6 | Pente du FDS en bruit blanc : D ~ fn^(1 − 3b/2) | pente exacte à 1e-4 près (b = 2, 4, 6, 8) | ± 0,01 |
+| 6 | Additivité pour b = 2 : D(P1 + P2) = D(P1) + D(P2) | rapport 1,000000 | 1e-9 |
+| 6 | Loi d'échelle : D(2P) = 2^(b/2) · D(P), donc sur-additivité pour b > 2 | exacte | 1e-9 |
+| 6 | z_rms calculé contre simulation temporelle (300 s) | écart 0,4 à 0,6 % | 2 % |
+| 6 | Formule du FDS contre comptage de pics de la simulation | −1,5 % (b = 2), −3,7 % (b = 4), −5,4 % (b = 6), −7,0 % (b = 8) sur 5 graines | 3 % (b = 2), 8 % (b = 4) |
 
 ## Hypothèses et limites
 
@@ -120,7 +127,11 @@ Chaque module est comparé à un résultat analytique. Les tolérances ne sont p
 - **Enveloppe terme à terme** : le choix « plus grand module » (diagonale = maximum) est une convention du projet, pas une méthode normalisée. Une enveloppe de matrices valides peut être non physique (voir étape 4).
 - **Correction par écrêtage des valeurs propres** : elle rend la matrice valide, mais modifie les niveaux de PSD. En remettant la diagonale à sa valeur, ce sont les cohérences qui changent (de 0,90 à 0,73 au pic de l'exemple). L'effet de cette correction sur le dommage n'est pas évalué. Des méthodes plus avancées (matrice valide la plus proche) ne sont pas implémentées.
 - **Tolérances statistiques** : calibrées sur 20 à 30 graines, elles ne sont pas des garanties.
-- **Étapes 6 à 8 non faites** : pas de calcul de dommage de fatigue, pas de surface de dommage, pas de comparaison essai séquentiel contre essai simultané.
+- **Dommage relatif uniquement** : C = 1 et z_rms en mm, donc seuls les rapports de dommage entre deux spécifications ont un sens. Aucune constante matériau, aucune prédiction de durée de vie.
+- **Contrainte supposée proportionnelle au déplacement relatif** de l'oscillateur ; règle de Miner linéaire, exposant b fixé (valeurs usuelles de 4 à 8, à vérifier selon le matériau).
+- **Formule du FDS à pics de Rayleigh** (bande étroite, un cycle par période propre) : comparée à un comptage de pics sur simulation, elle est conservatrice de 1,5 % (b = 2) à 7 % (b = 8) pour Q = 10. Ce n'est **pas** un comptage rainflow. L'écart dépend de Q et de la largeur de bande du signal.
+- **FDS mono-direction** : le dommage multiaxial (projection sur une direction, surface de dommage) n'est pas traité.
+- **Étapes 7 et 8 non faites** : pas de surface de dommage, pas de comparaison essai séquentiel contre essai simultané.
 
 ## Structure du dépôt
 
@@ -134,23 +145,27 @@ vibration-multiaxe/
 │   ├── oscillator.py     # oscillateur 1 DDL, équation de Miles
 │   ├── validity.py       # valeurs propres, enveloppe, correction
 │   ├── generation.py     # synthèse de signaux triaxiaux depuis S(f)
-│   └── demo_step1.py … demo_step5.py
+│   ├── damage.py         # FDS mono-direction (déplacement relatif, dommage relatif)
+│   └── demo_step1.py … demo_step6.py
 └── tests/
     ├── test_psd.py
     ├── test_miles.py
     ├── test_csd.py
     ├── test_validity.py
-    └── test_generation.py
+    ├── test_generation.py
+    ├── test_damage.py
+    └── test_additivity.py
 ```
 
 ## Perspectives
 
-- **Étape 6** : spectre de dommage de fatigue (FDS) par oscillateur 1 DDL, loi de Basquin et règle de Miner, avec test d'additivité pour b = 2.
-- **Étapes 7-8** : surface de dommage directionnelle D(θ, φ), comparaison essai séquentiel contre essai simultané.
+- **Étapes 7-8** : surface de dommage directionnelle D(θ, φ) par projection uᵀ·S·u, puis comparaison essai séquentiel contre essai simultané (hypothèse à tester numériquement : pour b > 2 et des axes non corrélés, l'essai séquentiel sous-estime le dommage de l'essai simultané).
+- Comptage rainflow à la place du comptage de pics, et FDS sur des signaux non gaussiens.
 - Données réelles (par exemple une centrale inertielle) : vérifier la fréquence d'échantillonnage, le repliement spectral, la stationnarité et la bande utile.
 
 ## Références (à vérifier avant citation)
 
 - C. Lalanne, *Mechanical Vibration and Shock Analysis* (vibrations aléatoires et fatigue).
 - MIL-STD-810H, méthode 527 (essais multi-exciteurs).
+- Basquin (N·σ^b = C) et Miner (D = Σ nᵢ/Nᵢ) : lois de fatigue classiques, voir Lalanne.
 - Documentation SciPy : `scipy.signal.welch`, `csd`, `coherence`.
