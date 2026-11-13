@@ -149,8 +149,7 @@ vibration-multiaxe/
 - **Étapes 7-8** : surface de dommage directionnelle D(θ, φ), comparaison essai séquentiel contre essai simultané.
 - Données réelles (par exemple une centrale inertielle) : vérifier la fréquence d'échantillonnage, le repliement spectral, la stationnarité et la bande utile.
 
-## Références (à vérifier avant citation)
-
+## Références
 - C. Lalanne, *Mechanical Vibration and Shock Analysis* (vibrations aléatoires et fatigue).
 - MIL-STD-810H, méthode 527 (essais multi-exciteurs).
 - Documentation SciPy : `scipy.signal.welch`, `csd`, `coherence`.
